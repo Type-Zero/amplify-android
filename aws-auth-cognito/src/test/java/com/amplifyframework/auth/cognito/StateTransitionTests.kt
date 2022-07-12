@@ -33,8 +33,6 @@ import com.amplifyframework.statemachine.codegen.states.AuthenticationState
 import com.amplifyframework.statemachine.codegen.states.AuthorizationState
 import com.amplifyframework.statemachine.codegen.states.DeleteUserState
 import com.amplifyframework.statemachine.codegen.states.FetchAuthSessionState
-import com.amplifyframework.statemachine.codegen.states.FetchAwsCredentialsState
-import com.amplifyframework.statemachine.codegen.states.FetchIdentityState
 import com.amplifyframework.statemachine.codegen.states.FetchUserPoolTokensState
 import com.amplifyframework.statemachine.codegen.states.SRPSignInState
 import com.amplifyframework.statemachine.codegen.states.SignOutState
@@ -87,9 +85,6 @@ class StateTransitionTests : StateTransitionTestBase() {
                 ),
                 AuthorizationState.Resolver(
                     FetchAuthSessionState.Resolver(
-                        FetchAwsCredentialsState.Resolver(mockFetchAwsCredentialsActions),
-                        FetchIdentityState.Resolver(mockFetchIdentityActions),
-                        FetchUserPoolTokensState.Resolver(mockFetchUserPoolTokensActions),
                         mockFetchAuthSessionActions
                     ),
                     DeleteUserState.Resolver(mockDeleteUserActions),

@@ -15,6 +15,7 @@
 
 package com.amplifyframework.auth.cognito.helpers
 
+import com.amplifyframework.statemachine.codegen.data.AWSCredentials
 import com.amplifyframework.statemachine.codegen.data.CognitoUserPoolTokens
 import java.time.Instant
 
@@ -59,5 +60,11 @@ object SessionHelper {
                 userPoolTokens.accessToken
             )
         }
+    }
+
+    fun isValidSession(awsCredentials: AWSCredentials): Boolean {
+        // TODO: verify session expiry
+        val currentTimeStamp = Instant.now()
+        return currentTimeStamp < awsCredentials.expiration?.let { Instant.ofEpochSecond(it) }
     }
 }
