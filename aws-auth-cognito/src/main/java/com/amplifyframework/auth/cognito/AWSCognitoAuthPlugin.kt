@@ -36,6 +36,7 @@ import com.amplifyframework.auth.AuthUserAttributeKey
 import com.amplifyframework.auth.cognito.data.AWSCognitoAuthCredentialStore
 import com.amplifyframework.auth.cognito.data.AWSCognitoLegacyCredentialStore
 import com.amplifyframework.auth.cognito.helpers.JWTParser
+import com.amplifyframework.auth.cognito.usecases.ResetPasswordUseCase
 import com.amplifyframework.auth.options.AuthConfirmResetPasswordOptions
 import com.amplifyframework.auth.options.AuthConfirmSignInOptions
 import com.amplifyframework.auth.options.AuthConfirmSignUpOptions
@@ -87,6 +88,7 @@ import com.amplifyframework.statemachine.codegen.states.SignUpState
 import com.amplifyframework.util.UserAgent
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -723,7 +725,17 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
         onSuccess: Consumer<AuthResetPasswordResult>,
         onError: Consumer<AuthException>
     ) {
-        TODO("Not yet implemented")
+        val cognitoIdentityProviderClient = configureCognitoClients().cognitoIdentityProviderClient ?: return
+        val appClient = configuration.userPool?.appClient ?: return
+
+        runBlocking {
+            ResetPasswordUseCase(cognitoIdentityProviderClient, appClient).execute(
+                username,
+                options,
+                onSuccess,
+                onError
+            )
+        }
     }
 
     override fun resetPassword(
@@ -731,7 +743,7 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
         onSuccess: Consumer<AuthResetPasswordResult>,
         onError: Consumer<AuthException>
     ) {
-        TODO("Not yet implemented")
+        resetPassword(username, AuthResetPasswordOptions.defaults(), onSuccess, onError)
     }
 
     override fun confirmResetPassword(
