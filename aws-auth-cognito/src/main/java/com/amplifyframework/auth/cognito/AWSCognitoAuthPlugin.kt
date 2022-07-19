@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.Intent
 import aws.sdk.kotlin.services.cognitoidentity.CognitoIdentityClient
 import aws.sdk.kotlin.services.cognitoidentityprovider.CognitoIdentityProviderClient
+import aws.sdk.kotlin.services.cognitoidentityprovider.model.ListDevicesRequest
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.sdk.kotlin.services.cognitoidentityprovider.model.AttributeType
 import aws.sdk.kotlin.services.cognitoidentityprovider.model.ConfirmSignUpRequest
@@ -89,6 +90,7 @@ import com.amplifyframework.statemachine.codegen.states.SRPSignInState
 import com.amplifyframework.statemachine.codegen.states.SignOutState
 import com.amplifyframework.util.UserAgent
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.util.concurrent.Semaphore
 import org.json.JSONException
@@ -383,7 +385,7 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
             { authState ->
                 when (val authNState = authState.authNState) {
                     is AuthenticationState.SigningIn -> {
-                        val srpSignInState = authNState.srpSignInState
+                        val srpSignInState = authNState.signInState?.srpSignInState
                         if (srpSignInState is SRPSignInState.Error) {
                             token?.let(authStateMachine::cancel)
                             onError.accept(
@@ -654,7 +656,6 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
     }
 
     override fun rememberDevice(onSuccess: Action, onError: Consumer<AuthException>) {
-        TODO("Not yet implemented")
     }
 
     override fun forgetDevice(onSuccess: Action, onError: Consumer<AuthException>) {
@@ -673,7 +674,72 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
         onSuccess: Consumer<MutableList<AuthDevice>>,
         onError: Consumer<AuthException>
     ) {
-        TODO("Not yet implemented")
+        authStateMachine.getCurrentState { authState ->
+            when (authState.authNState) {
+                is AuthenticationState.SignedIn -> {
+                    var token: StateChangeListenerToken? = null
+                    token = credentialStoreStateMachine.listen(
+                        {
+                            when (it) {
+                                is CredentialStoreState.Success -> {
+                                    token?.let(credentialStoreStateMachine::cancel)
+                                    val accessToken = it.storedCredentials?.cognitoUserPoolTokens?.accessToken
+                                    if (!accessToken.isNullOrEmpty()) {
+                                        _fetchDevices(
+                                            accessToken,
+                                            onSuccess,
+                                            onError
+                                        )
+                                    } else {
+                                        onError.accept(AuthException.InvalidStateException())
+                                    }
+                                }
+                                is CredentialStoreState.Error -> {
+                                    token?.let(credentialStoreStateMachine::cancel)
+                                    onError.accept(AuthException.InvalidStateException())
+                                }
+                                else -> {
+                                    // no-op
+                                }
+                            }
+                        },
+                        {
+                            credentialStoreStateMachine.send(
+                                CredentialStoreEvent(CredentialStoreEvent.EventType.LoadCredentialStore())
+                            )
+                        }
+                    )
+                }
+                else -> {
+                    onError.accept(AuthException.SignedOutException())
+                }
+            }
+        }
+    }
+
+    private fun _fetchDevices(
+        token: String,
+        onSuccess: Consumer<MutableList<AuthDevice>>,
+        onError: Consumer<AuthException>
+    ) {
+        GlobalScope.async {
+            try {
+                val response =
+                    configureCognitoClients().cognitoIdentityProviderClient?.listDevices(
+                        ListDevicesRequest.invoke {
+                            accessToken = token
+                        }
+                    )
+                val _devices = response?.devices
+                val authdeviceList = mutableListOf<AuthDevice>()
+                _devices?.forEach {
+                    authdeviceList.add(AuthDevice.fromId(it.deviceKey ?: ""))
+                }
+                onSuccess.accept(authdeviceList)
+            } catch (e: Exception) {
+                onError.accept(AuthException(e.localizedMessage, e, AuthException.TODO_RECOVERY_SUGGESTION))
+            }
+        }
     }
 
     override fun resetPassword(

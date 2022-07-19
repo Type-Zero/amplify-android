@@ -36,6 +36,7 @@ import com.amplifyframework.statemachine.codegen.states.FetchAwsCredentialsState
 import com.amplifyframework.statemachine.codegen.states.FetchIdentityState
 import com.amplifyframework.statemachine.codegen.states.FetchUserPoolTokensState
 import com.amplifyframework.statemachine.codegen.states.SRPSignInState
+import com.amplifyframework.statemachine.codegen.states.SignInState
 import com.amplifyframework.statemachine.codegen.states.SignOutState
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -65,6 +66,7 @@ class StateTransitionTests : StateTransitionTestBase() {
         setupAuthActions()
         setupAuthNActions()
         setupAuthZActions()
+        setupSignInActions()
         setupSRPActions()
         setupSignOutActions()
         setupFetchAuthActions()
@@ -77,7 +79,7 @@ class StateTransitionTests : StateTransitionTestBase() {
         stateMachine = AuthStateMachine(
             AuthState.Resolver(
                 AuthenticationState.Resolver(
-                    SRPSignInState.Resolver(mockSRPActions),
+                    SignInState.Resolver(SRPSignInState.Resolver(mockSRPActions), mockSignInActions),
                     SignOutState.Resolver(mockSignOutActions),
                     mockAuthenticationActions
                 ),
@@ -599,12 +601,12 @@ class StateTransitionTests : StateTransitionTestBase() {
             }
         )
 
-        assertTrue { subscribeLatch.await(5, TimeUnit.MINUTES) }
+        assertTrue { subscribeLatch.await(5, TimeUnit.SECONDS) }
 
         stateMachine.send(
             AuthEvent(AuthEvent.EventType.ConfigureAuth(configuration, credentials))
         )
-        assertTrue { configureLatch.await(5, TimeUnit.MINUTES) }
-        assertTrue { testLatch.await(10, TimeUnit.MINUTES) }
+        assertTrue { configureLatch.await(5, TimeUnit.SECONDS) }
+        assertTrue { testLatch.await(5, TimeUnit.SECONDS) }
     }
 }
