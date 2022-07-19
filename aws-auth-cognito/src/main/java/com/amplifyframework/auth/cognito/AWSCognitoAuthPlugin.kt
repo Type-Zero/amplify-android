@@ -86,9 +86,10 @@ import com.amplifyframework.statemachine.codegen.states.SRPSignInState
 import com.amplifyframework.statemachine.codegen.states.SignOutState
 import com.amplifyframework.statemachine.codegen.states.SignUpState
 import com.amplifyframework.util.UserAgent
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -719,6 +720,7 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun resetPassword(
         username: String,
         options: AuthResetPasswordOptions,
@@ -728,7 +730,7 @@ class AWSCognitoAuthPlugin : AuthPlugin<AWSCognitoAuthServiceBehavior>() {
         val cognitoIdentityProviderClient = configureCognitoClients().cognitoIdentityProviderClient ?: return
         val appClient = configuration.userPool?.appClient ?: return
 
-        runBlocking {
+        GlobalScope.launch {
             ResetPasswordUseCase(cognitoIdentityProviderClient, appClient).execute(
                 username,
                 options,
